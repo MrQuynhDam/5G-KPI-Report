@@ -138,18 +138,17 @@ def render_trend_chart(filtered_df):
 
     ctrl_col1, ctrl_col2 = st.columns([1, 1])
     with ctrl_col1:
-        # Tự động điều chỉnh UI dựa trên việc file có dữ liệu Giờ hay không
-        if has_hour_info:
-            time_mode = st.radio(
-                "⏱ Thời gian:",
-                options=["Chỉ theo giờ (24h Avg)", "Theo Ngày & Giờ (Timeline)"],
-                index=1,
-                horizontal=True
-            )
-        else:
-            time_mode = "Theo Ngày"
-            st.markdown("**⏱ Thời gian:**")
-            st.info("📅 Hiển thị xu hướng theo Ngày (File không có thông tin Giờ)")
+        time_options = ["Chỉ theo giờ (24h Avg)", "Theo Ngày & Giờ (Timeline)"]
+        
+        # Nếu không có cột Giờ: Ép index=1 ("Theo Ngày & Giờ") và disable radio
+        time_mode = st.radio(
+            "⏱ Thời gian:",
+            options=time_options,
+            index=1 if not has_hour_info else 0,
+            disabled=not has_hour_info,
+            horizontal=True,
+            key="radio_time_mode"
+        )
 
     with ctrl_col2:
         sel_kpi_lbl = st.selectbox("🎯 Chọn KPI kết hợp Traffic 5G:", options=list(avail_kpis.keys()))
