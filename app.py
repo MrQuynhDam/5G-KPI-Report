@@ -9,7 +9,8 @@ from src.ui_components import (
     render_freqband_charts,
     render_trend_chart,
     render_top_n_section,
-    render_worst_n_and_pdf_section,
+    render_worst_n_section,
+    render_pdf_export_section,
 )
 
 # 1. Cấu hình trang & Font
@@ -96,24 +97,39 @@ st.title("📡 5G RAN Quality Report")
 st.markdown(f"**Records:** `{len(filtered_df):,}` | **GNODEB:** `{num_sites}` | **5G Cells:** `{num_cells}`")
 st.markdown("---")
 
-# Render đầy đủ 10 KPI Cards (Hàng 1 & Hàng 2)
+# Render 10 KPI Cards
 render_kpi_overview(filtered_df)
 st.markdown("---")
 
-# 5. Thống kê phân bổ Freqband (Pie & Bar chart)
+# 5. Thống kê Freqband
 render_freqband_charts(filtered_df, cell_col)
 st.markdown("---")
 
-# 6. Biểu đồ xu hướng tương quan Plotly
+# 6. Biểu đồ xu hướng Plotly
 render_trend_chart(filtered_df)
 st.markdown("---")
 
-# 7. Danh sách Top N High Traffic GNODEB & Cell
+# 7. Top N High Traffic
 top_cell_df, top_site_df = render_top_n_section(filtered_df, site_col, cell_col)
 st.markdown("---")
 
-# 8. Bảng Worst N Cells & Xuất Báo Cáo PDF
+# 8. Worst N Cells
+worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho = render_worst_n_section(filtered_df, site_col, cell_col)
+st.markdown("---")
+
+# 9. Xuất Báo Cáo PDF (Chỉ chạy khi click nút)
 has_hour_info = ("Hour" in filtered_df.columns and filtered_df["Hour"].notna().any())
-render_worst_n_and_pdf_section(filtered_df, site_col, cell_col, top_site_df, top_cell_df, has_hour_info)
+render_pdf_export_section(
+    filtered_df,
+    site_col,
+    cell_col,
+    top_site_df,
+    top_cell_df,
+    worst10_add_sr,
+    worst10_drop,
+    worst10_intra_ho,
+    worst10_inter_ho,
+    has_hour_info
+)
 
 st.caption("🚀 5G RAN Report — Multi-band & Performance Analytics")
