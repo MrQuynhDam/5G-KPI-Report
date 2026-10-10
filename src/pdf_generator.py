@@ -19,12 +19,19 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
     h2_style = ParagraphStyle("H2", fontName=FONT_NAME, fontSize=11, textColor=colors.HexColor("#1e293b"), spaceBefore=8, spaceAfter=4)
     norm_style = ParagraphStyle("N", fontName=FONT_NAME, fontSize=8.5, textColor=colors.HexColor("#334155"))
 
+    def p_cell(text, is_bold=False, align='left', color_hex='#0f172a'):
+        p_st = ParagraphStyle('PC', fontName=FONT_NAME, fontSize=7.5, textColor=colors.HexColor(color_hex), leading=9, alignment=0 if align=='left' else 1)
+        txt = f"<b>{text}</b>" if is_bold else str(text)
+        return Paragraph(txt, p_st)
+
     now_str = pd.Timestamp.now().strftime("%d/%m/%Y")
 
+    # HEADER BÁO CÁO
     story.append(Paragraph("BÁO CÁO CHẤT LƯỢNG MẠNG 5G", t_style))
     story.append(Paragraph(f"Thời gian xuất báo cáo: {now_str}", norm_style))
     story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#0284c7"), spaceAfter=10))
 
+    # MỤC I. TỔNG QUAN KPI 5G
     story.append(Paragraph("I. TỔNG QUAN KPI 5G", h2_style))
     story.append(Spacer(1, 4))
 
@@ -75,12 +82,66 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
     story.append(grid_cards)
     story.append(Spacer(1, 8))
 
+    # MỤC II. THỐNG KÊ PHÂN BỔ CELL VÀ TRAFFIC
     if (fb_cell_counts is not None and not fb_cell_counts.empty) or (fb_tf_df is not None and not fb_tf_df.empty):
         story.append(Paragraph("II. THỐNG KÊ PHÂN BỔ CELL VÀ TRAFFIC", h2_style))
         story.append(Spacer(1, 2))
         
+        # 1. BẢNG BỔ SUNG: Thống kê chi tiết số lượng Cell và Traffic theo Băng tần
+        merged_fb = pd.DataFrame()
+        if fb_cell_counts is not None and not fb_cell_counts.empty:
+            merged_fb = fb_cell_counts.copy()
+            if fb_tf_df is not None and not fb_tf_df.empty:
+                merged_fb = pd.merge(merged_fb, fb_tf_df, on="Freqband", how="left").fillna(0)
+            else:
+                merged_fb["TRAFFIC"] = 0.0
+        elif fb_tf_df is not None and not fb_tf_df.empty:
+            merged_fb = fb_tf_df.copy()
+            merged_fb["Số lượng Cell"] = 0
+
+        if not merged_fb.empty:
+            total_cells_count = merged_fb["Số lượng Cell"].sum()
+            fb_table_data = [[
+                p_cell("Băng tần (Freqband)", True, color_hex='#ffffff'),
+                p_cell("Số lượng Cell", True, color_hex='#ffffff'),
+                p_cell("Tỷ lệ Cell (%)", True, color_hex='#ffffff'),
+                p_cell("Tổng Traffic (GB)", True, color_hex='#ffffff')
+            ]]
+            
+            for _, r in merged_fb.iterrows():
+                cnt = int(r.get("Số lượng Cell", 0))
+                pct = (cnt / total_cells_count * 100) if total_cells_count > 0 else 0
+                tf = float(r.get("TRAFFIC", 0))
+                fb_table_data.append([
+                    p_cell(str(r.get("Freqband", ""))),
+                    p_cell(f"{cnt:,}"),
+                    p_cell(f"{pct:.1f}%"),
+                    p_cell(f"{tf:,.2f}")
+                ])
+            
+            tot_tf = merged_fb["TRAFFIC"].sum() if "TRAFFIC" in merged_fb else 0
+            fb_table_data.append([
+                p_cell("Tổng cộng", True),
+                p_cell(f"{total_cells_count:,}", True),
+                p_cell("100.0%", True),
+                p_cell(f"{tot_tf:,.2f}", True)
+            ])
+
+            t_fb = Table(fb_table_data, colWidths=[180, 180, 180, 180])
+            t_fb.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#0284c7")),
+                ("BACKGROUND", (0,-1), (-1,-1), colors.HexColor("#f1f5f9")),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 3),
+                ("TOPPADDING", (0,0), (-1,-1), 3),
+                ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
+                ("ROWBACKGROUNDS", (0,1), (-1,-2), [colors.white, colors.HexColor("#f8fafc")]),
+            ]))
+            story.append(t_fb)
+            story.append(Spacer(1, 6))
+
+        # 2. Biểu đồ hình tròn và biểu đồ cột
         fb_img_buf = io.BytesIO()
-        fig_fb, (ax1_fb, ax2_fb) = plt.subplots(1, 2, figsize=(11, 2.8), dpi=150)
+        fig_fb, (ax1_fb, ax2_fb) = plt.subplots(1, 2, figsize=(11, 2.6), dpi=150)
         
         if fb_cell_counts is not None and not fb_cell_counts.empty:
             fb_labels = fb_cell_counts["Freqband"].tolist()
@@ -124,9 +185,10 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
         plt.savefig(fb_img_buf, format='png', dpi=150)
         plt.close()
         fb_img_buf.seek(0)
-        story.append(Image(fb_img_buf, width=740, height=188))
+        story.append(Image(fb_img_buf, width=740, height=175))
         story.append(Spacer(1, 10))
 
+    # MỤC III. CÁC CHỈ SỐ KPI
     story.append(Paragraph("III. CÁC CHỈ SỐ KPI", h2_style))
     story.append(Spacer(1, 4))
 
@@ -206,13 +268,9 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
 
     story.append(PageBreak())
 
+    # MỤC IV. TOP 10 HIGH TRAFFIC
     story.append(Paragraph("IV. DANH SÁCH TOP 10 HIGH TRAFFIC GNODEB & CELL (5G)", h2_style))
     story.append(Spacer(1, 4))
-
-    def p_cell(text, is_bold=False, align='left', color_hex='#0f172a'):
-        p_st = ParagraphStyle('PC', fontName=FONT_NAME, fontSize=7.5, textColor=colors.HexColor(color_hex), leading=9, alignment=0 if align=='left' else 1)
-        txt = f"<b>{text}</b>" if is_bold else str(text)
-        return Paragraph(txt, p_st)
 
     if not top10_cells.empty:
         story.append(Paragraph("<b>1. Top 10 Cell 5G có Lưu lượng Traffic Volume (GB) cao nhất:</b>", norm_style))
@@ -276,6 +334,7 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
 
     story.append(PageBreak())
 
+    # MỤC V. WORST 10 CELLS
     story.append(Paragraph("V. DANH SÁCH WORST 10 CELLS CHO CÁC KPI CHÍNH 5G", h2_style))
     story.append(Spacer(1, 4))
 
