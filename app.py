@@ -131,5 +131,3 @@ render_pdf_export_section(
     worst10_inter_ho,
     has_hour_info
 )
-
-st.caption("🚀 5G RAN Report — Multi-band & Performance Analytics")
