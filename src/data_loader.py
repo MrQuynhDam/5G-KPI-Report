@@ -29,8 +29,31 @@ def parse_gio(series):
 
 @st.cache_data
 def process_data(file_input):
-    df = pd.read_csv(file_input)
+    # 1. Bắt lỗi không đọc được file CSV
+    try:
+        df = pd.read_csv(file_input)
+    except Exception as e:
+        st.error(f"❌ Không thể đọc file CSV! Kiểm tra định dạng hoặc mã hóa file. (Lỗi: {e})")
+        return None
 
+    # 2. Bắt lỗi file rỗng
+    if df is None or df.empty:
+        st.error("❌ File CSV không chứa dữ liệu (file rỗng)!")
+        return None
+
+    # 3. Kiểm tra xem có đúng là file KPI 5G hay không
+    kpi_indicators = [
+        "SGNB_ADD_SUCCESS_RATE", "SGNB_ABN_RELEASE_RATE", 
+        "USER_DL_AVG_THROUGHPUT", "CQI_5G", "TRAFFIC", 
+        "DL_TRAFFIC_VOLUME", "INTRA_SGNB_PS_CHANGE"
+    ]
+    # File hợp lệ nếu chứa ít nhất 2 cột KPI đặc trưng của 5G
+    found_kpis = [col for col in kpi_indicators if col in df.columns]
+    if len(found_kpis) < 2:
+        st.error("⚠️ File tải lên không đúng định dạng KPI 5G! Vui lòng kiểm tra lại cấu hình cột trong file CSV.")
+        return None
+
+    # --- Phần xử lý dữ liệu phía dưới giữ nguyên ---
     site_cols = ["Tên GNODEB", "gNodeB Name", "gNODEB Name", "Site Name"]
     cell_cols = ["Tên CELL", "Cell Name", "CELL Name"]
 
