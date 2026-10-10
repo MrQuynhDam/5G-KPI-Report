@@ -138,14 +138,18 @@ def render_trend_chart(filtered_df):
 
     ctrl_col1, ctrl_col2 = st.columns([1, 1])
     with ctrl_col1:
-        time_options = ["Chỉ theo giờ (24h Avg)", "Theo Ngày & Giờ (Timeline)"]
-        time_mode = st.radio(
-            "⏱ Thời gian:",
-            options=time_options,
-            index=1,
-            disabled=not has_hour_info,
-            horizontal=True
-        )
+        # Tự động điều chỉnh UI dựa trên việc file có dữ liệu Giờ hay không
+        if has_hour_info:
+            time_mode = st.radio(
+                "⏱ Thời gian:",
+                options=["Chỉ theo giờ (24h Avg)", "Theo Ngày & Giờ (Timeline)"],
+                index=1,
+                horizontal=True
+            )
+        else:
+            time_mode = "Theo Ngày"
+            st.markdown("**⏱ Thời gian:**")
+            st.info("📅 Hiển thị xu hướng theo Ngày (File không có thông tin Giờ)")
 
     with ctrl_col2:
         sel_kpi_lbl = st.selectbox("🎯 Chọn KPI kết hợp Traffic 5G:", options=list(avail_kpis.keys()))
@@ -183,6 +187,7 @@ def render_trend_chart(filtered_df):
         x_axis = c_data["TimeLabel"]
         x_title = "Thời Gian (Ngày/Giờ)"
     else:
+        # Trường hợp không có dữ liệu Giờ -> Tự động gom nhóm theo Ngày
         c_data = filtered_df.groupby("Date").agg({
             "TRAFFIC": "sum",
             sel_kpi_col: agg_func,
