@@ -23,7 +23,9 @@ st.set_page_config(
 setup_vietnamese_fonts()
 inject_custom_css()
 
+# =========================================================
 # 2. Sidebar Navigation & Data Upload
+# =========================================================
 st.sidebar.title("📶 Navigation (5G)")
 
 sample_path = os.path.join("data", "5G_Sample.csv")
@@ -50,6 +52,19 @@ elif os.path.exists("5G_Sample.csv"):
 else:
     st.info("👋 Vui lòng tải file CSV KPI 5G ở thanh công cụ bên trái.")
     st.stop()
+
+# ---------------------------------------------------------
+# 🚨 CHÈN VÀO ĐÂY: Dừng app an toàn nếu file nạp vào bị lỗi / sai định dạng
+# ---------------------------------------------------------
+if df is None:
+    st.stop()
+
+# =========================================================
+# 3. Sidebar Filters (Các đoạn code phía dưới giữ nguyên)
+# =========================================================
+st.sidebar.subheader("📅 Chọn Ngày")
+if "Date" in df.columns and df["Date"].notnull().any():
+    ...
 
 # 3. Sidebar Filters
 st.sidebar.subheader("📅 Chọn Ngày")
