@@ -117,7 +117,7 @@ st.markdown("---")
 worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho = render_worst_n_section(filtered_df, site_col, cell_col)
 st.markdown("---")
 
-# 9. Xuất Báo Cáo PDF (Chỉ chạy khi click nút)
+# 9. Xuất Báo Cáo PDF
 has_hour_info = ("Hour" in filtered_df.columns and filtered_df["Hour"].notna().any())
 render_pdf_export_section(
     filtered_df,
