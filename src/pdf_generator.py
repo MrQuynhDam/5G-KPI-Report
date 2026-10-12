@@ -10,7 +10,19 @@ from reportlab.platypus import (
 )
 from src.config import FONT_NAME
 
-def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho, fb_cell_counts=None, fb_tf_df=None):
+def generate_pdf_report(
+    summary,
+    hourly_trend_df,
+    top10_sites,
+    top10_cells,
+    worst10_add_sr,
+    worst10_drop,
+    worst10_intra_ho,
+    worst10_inter_ho,
+    fb_cell_counts=None,
+    fb_tf_df=None,
+    fb_dl_df=None  # <-- Thêm tham số nhận dữ liệu Throughput
+):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
     story = []
@@ -82,12 +94,12 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
     story.append(grid_cards)
     story.append(Spacer(1, 8))
 
-    # MỤC II. THỐNG KÊ PHÂN BỔ CELL VÀ TRAFFIC
+    # MỤC II. THỐNG KÊ PHÂN BỔ CELL, TRAFFIC VÀ THROUGHPUT
     if (fb_cell_counts is not None and not fb_cell_counts.empty) or (fb_tf_df is not None and not fb_tf_df.empty):
-        story.append(Paragraph("II. THỐNG KÊ PHÂN BỔ CELL VÀ TRAFFIC", h2_style))
+        story.append(Paragraph("II. THỐNG KÊ PHÂN BỔ CELL, TRAFFIC VÀ DL THROUGHPUT THEO BĂNG TẦN", h2_style))
         story.append(Spacer(1, 2))
         
-        # 1. BẢNG BỔ SUNG: Thống kê chi tiết số lượng Cell và Traffic theo Băng tần
+        # 1. BẢNG BỔ SUNG: Bảng chi tiết
         merged_fb = pd.DataFrame()
         if fb_cell_counts is not None and not fb_cell_counts.empty:
             merged_fb = fb_cell_counts.copy()
@@ -95,9 +107,17 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
                 merged_fb = pd.merge(merged_fb, fb_tf_df, on="Freqband", how="left").fillna(0)
             else:
                 merged_fb["TRAFFIC"] = 0.0
+            if fb_dl_df is not None and not fb_dl_df.empty:
+                merged_fb = pd.merge(merged_fb, fb_dl_df, on="Freqband", how="left").fillna(0)
+            else:
+                merged_fb["Avg DL Throughput (Mbps)"] = 0.0
         elif fb_tf_df is not None and not fb_tf_df.empty:
             merged_fb = fb_tf_df.copy()
             merged_fb["Số lượng Cell"] = 0
+            if fb_dl_df is not None and not fb_dl_df.empty:
+                merged_fb = pd.merge(merged_fb, fb_dl_df, on="Freqband", how="left").fillna(0)
+            else:
+                merged_fb["Avg DL Throughput (Mbps)"] = 0.0
 
         if not merged_fb.empty:
             total_cells_count = merged_fb["Số lượng Cell"].sum()
@@ -105,29 +125,34 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
                 p_cell("Băng tần (Freqband)", True, color_hex='#ffffff'),
                 p_cell("Số lượng Cell", True, color_hex='#ffffff'),
                 p_cell("Tỷ lệ Cell (%)", True, color_hex='#ffffff'),
-                p_cell("Tổng Traffic (GB)", True, color_hex='#ffffff')
+                p_cell("Tổng Traffic (GB)", True, color_hex='#ffffff'),
+                p_cell("DL Thrp TB (Mbps)", True, color_hex='#ffffff')
             ]]
             
             for _, r in merged_fb.iterrows():
                 cnt = int(r.get("Số lượng Cell", 0))
                 pct = (cnt / total_cells_count * 100) if total_cells_count > 0 else 0
                 tf = float(r.get("TRAFFIC", 0))
+                dl_thrp = float(r.get("Avg DL Throughput (Mbps)", 0))
                 fb_table_data.append([
                     p_cell(str(r.get("Freqband", ""))),
                     p_cell(f"{cnt:,}"),
                     p_cell(f"{pct:.1f}%"),
-                    p_cell(f"{tf:,.2f}")
+                    p_cell(f"{tf:,.2f}"),
+                    p_cell(f"{dl_thrp:,.2f}")
                 ])
             
             tot_tf = merged_fb["TRAFFIC"].sum() if "TRAFFIC" in merged_fb else 0
+            avg_dl_tot = merged_fb["Avg DL Throughput (Mbps)"].mean() if "Avg DL Throughput (Mbps)" in merged_fb else 0
             fb_table_data.append([
-                p_cell("Tổng cộng", True),
+                p_cell("Tổng / TB", True),
                 p_cell(f"{total_cells_count:,}", True),
                 p_cell("100.0%", True),
-                p_cell(f"{tot_tf:,.2f}", True)
+                p_cell(f"{tot_tf:,.2f}", True),
+                p_cell(f"{avg_dl_tot:,.2f}", True)
             ])
 
-            t_fb = Table(fb_table_data, colWidths=[180, 180, 180, 180])
+            t_fb = Table(fb_table_data, colWidths=[140, 140, 140, 160, 160])
             t_fb.setStyle(TableStyle([
                 ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#0284c7")),
                 ("BACKGROUND", (0,-1), (-1,-1), colors.HexColor("#f1f5f9")),
@@ -139,10 +164,11 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
             story.append(t_fb)
             story.append(Spacer(1, 6))
 
-        # 2. Biểu đồ hình tròn và biểu đồ cột
+        # 2. Biểu đồ 3 cột: Số lượng Cell, Traffic & DL Throughput
         fb_img_buf = io.BytesIO()
-        fig_fb, (ax1_fb, ax2_fb) = plt.subplots(1, 2, figsize=(11, 2.6), dpi=150)
+        fig_fb, (ax1_fb, ax2_fb, ax3_fb) = plt.subplots(1, 3, figsize=(11, 2.6), dpi=150)
         
+        # Biểu đồ 1: Số lượng Cell
         if fb_cell_counts is not None and not fb_cell_counts.empty:
             fb_labels = fb_cell_counts["Freqband"].tolist()
             fb_sizes = fb_cell_counts["Số lượng Cell"].tolist()
@@ -154,19 +180,20 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
                 wedgeprops=dict(width=0.45, edgecolor='white')
             )
             for t_idx, t in enumerate(texts):
-                t.set_fontsize(7.5)
+                t.set_fontsize(7)
             for at in autotexts:
-                at.set_fontsize(7)
+                at.set_fontsize(6.5)
                 at.set_weight('bold')
-            ax1_fb.set_title("Số lượng & Tỷ lệ Cell theo Băng tần", fontsize=8.5, fontweight='bold', pad=6)
+            ax1_fb.set_title("Số lượng & Tỷ lệ Cell", fontsize=8, fontweight='bold', pad=6)
         
+        # Biểu đồ 2: Tổng Traffic
         if fb_tf_df is not None and not fb_tf_df.empty:
             fb_bands = fb_tf_df["Freqband"].tolist()
             fb_traffics = fb_tf_df["TRAFFIC"].tolist()
             fb_bars = ax2_fb.bar(fb_bands, fb_traffics, color='#0284c7', width=0.45, alpha=0.85)
-            ax2_fb.set_title("Tổng Traffic 5G (GB) theo Băng tần", fontsize=8.5, fontweight='bold', pad=6)
-            ax2_fb.set_ylabel("Traffic (GB)", fontsize=7.5)
-            ax2_fb.tick_params(axis='both', labelsize=7)
+            ax2_fb.set_title("Tổng Traffic 5G (GB)", fontsize=8, fontweight='bold', pad=6)
+            ax2_fb.set_ylabel("Traffic (GB)", fontsize=7)
+            ax2_fb.tick_params(axis='both', labelsize=6.5)
             ax2_fb.grid(True, linestyle='--', alpha=0.25, axis='y')
             
             max_tf = max(fb_traffics) if fb_traffics else 1
@@ -177,8 +204,30 @@ def generate_pdf_report(summary, hourly_trend_df, top10_sites, top10_cells, wors
                 ax2_fb.text(
                     bar.get_x() + bar.get_width()/2.0, 
                     yval + (max_tf * 0.02), 
-                    f"{yval:,.1f} GB", 
-                    ha='center', va='bottom', fontsize=6.5, fontweight='bold'
+                    f"{yval:,.1f}G", 
+                    ha='center', va='bottom', fontsize=6, fontweight='bold'
+                )
+
+        # Biểu đồ 3: DL Throughput Trung bình
+        if fb_dl_df is not None and not fb_dl_df.empty:
+            fb_dl_bands = fb_dl_df["Freqband"].tolist()
+            fb_dls = fb_dl_df["Avg DL Throughput (Mbps)"].tolist()
+            fb_bars3 = ax3_fb.bar(fb_dl_bands, fb_dls, color='#10b981', width=0.45, alpha=0.85)
+            ax3_fb.set_title("DL Throughput TB (Mbps)", fontsize=8, fontweight='bold', pad=6)
+            ax3_fb.set_ylabel("Throughput (Mbps)", fontsize=7)
+            ax3_fb.tick_params(axis='both', labelsize=6.5)
+            ax3_fb.grid(True, linestyle='--', alpha=0.25, axis='y')
+            
+            max_dl = max(fb_dls) if fb_dls else 1
+            ax3_fb.set_ylim(0, max_dl * 1.18)
+            
+            for bar in fb_bars3:
+                yval = bar.get_height()
+                ax3_fb.text(
+                    bar.get_x() + bar.get_width()/2.0, 
+                    yval + (max_dl * 0.02), 
+                    f"{yval:,.1f}M", 
+                    ha='center', va='bottom', fontsize=6, fontweight='bold'
                 )
 
         plt.tight_layout()
