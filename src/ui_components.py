@@ -57,10 +57,10 @@ def render_kpi_overview(filtered_df):
         render_card("Radio Quality", "CQI 5G Index", f"{v:.2f}%", ">=95.0%", f"{s_cqi.min():.1f}%", f"{s_cqi.max():.1f}%", "Chất lượng RF 5G", "EXCELLENT" if v >= 95.0 else "WARNING")
     with c2:
         v = calc_weighted_avg(filtered_df, "DLINK_RES_BLK_ULT")
-        render_card("Capacity & Load", "PRB DL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_dl.min():.1f}%", f"{s_prb_dl.max():.1f}%", "Tải PRB Downlink", "EXCELLENT" if v <= 40.0 else "WARNING")
+        render_card("Capacity & Load", "PRB DL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_dl.min():.1f}%", f"{s_prb_dl.max():.1f}%", "Tải PRB Downlink", "EXCELLENT" if v <= 40.0 else "WARNIN[...]
     with c3:
         v = calc_weighted_avg(filtered_df, "ULINK_RES_BLK_ULT")
-        render_card("Capacity & Load", "PRB UL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_ul.min():.1f}%", f"{s_prb_ul.max():.1f}%", "Tải PRB Uplink", "EXCELLENT" if v <= 40.0 else "WARNING")
+        render_card("Capacity & Load", "PRB UL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_ul.min():.1f}%", f"{s_prb_ul.max():.1f}%", "Tải PRB Uplink", "EXCELLENT" if v <= 40.0 else "WARNING"[...]
     with c4:
         v = s_intra.mean()
         render_card("Mobility", "Intra-SgNB HO SR", f"{v:.2f}%", ">=98.0%", f"{s_intra.min():.1f}%", f"{s_intra.max():.1f}%", "Chuyển giao nội bộ", "WARNING" if v < 98.0 else "GOOD")
@@ -70,7 +70,7 @@ def render_kpi_overview(filtered_df):
 
 def render_freqband_charts(filtered_df, cell_col):
     st.subheader("📊 Thống Kê Phân Bổ Cell & Traffic Theo Freqband (5G)")
-    fb_col1, fb_col2 = st.columns(2)
+    fb_col1, fb_col2, fb_col3 = st.columns(3)
 
     if cell_col and "Freqband" in filtered_df.columns:
         cell_fb_df = filtered_df[[cell_col, "Freqband"]].drop_duplicates()
@@ -117,6 +117,36 @@ def render_freqband_charts(filtered_df, cell_col):
 
             with fb_col2:
                 st.plotly_chart(fig_fb_tf, use_container_width=True)
+
+        # 🆕 Thống kê DL Throughput theo Băng tần
+        if "USER_DL_AVG_THROUGHPUT" in filtered_df.columns:
+            fb_dl_df = filtered_df.groupby("Freqband").agg({
+                "USER_DL_AVG_THROUGHPUT": "mean"
+            }).reset_index()
+            fb_dl_df.columns = ["Freqband", "Avg DL Throughput (Mbps)"]
+            fb_dl_df = fb_dl_df.sort_values(by="Freqband")
+
+            fig_fb_dl = px.bar(
+                fb_dl_df,
+                x="Freqband",
+                y="Avg DL Throughput (Mbps)",
+                text="Avg DL Throughput (Mbps)",
+                title="<b>Trung Bình DL Throughput theo Băng tần (5G)</b>",
+                color="Freqband",
+                color_discrete_sequence=px.colors.qualitative.Light24
+            )
+            fig_fb_dl.update_traces(texttemplate='%{text:,.1f} Mbps', textposition='outside')
+            fig_fb_dl.update_layout(
+                template="plotly_dark",
+                height=320,
+                showlegend=False,
+                margin=dict(l=20, r=20, t=40, b=20),
+                yaxis_title="Avg DL Throughput (Mbps)",
+                xaxis_title="Freqband"
+            )
+
+            with fb_col3:
+                st.plotly_chart(fig_fb_dl, use_container_width=True)
 
 def render_trend_chart(filtered_df):
     st.subheader("📈 Biểu Đồ Tương Quan Xu Hướng KPI 5G")
