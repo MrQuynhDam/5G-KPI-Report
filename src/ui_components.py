@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from src.data_loader import calc_weighted_avg
 from src.pdf_generator import generate_pdf_report
 
+
 def render_card(cat, title, val, tgt, min_v, max_v, remark, stt="good"):
     s_low = stt.lower()
     html_str = (
@@ -20,6 +21,7 @@ def render_card(cat, title, val, tgt, min_v, max_v, remark, stt="good"):
     )
     st.markdown(html_str, unsafe_allow_html=True)
 
+
 def render_kpi_overview(filtered_df):
     s_tf = filtered_df.get("TRAFFIC", pd.Series([0]))
     s_add_sr = filtered_df.get("SGNB_ADD_SUCCESS_RATE", pd.Series([0]))
@@ -32,7 +34,6 @@ def render_kpi_overview(filtered_df):
     s_intra = filtered_df.get("INTRA_SGNB_PS_CHANGE", pd.Series([0]))
     s_inter = filtered_df.get("INTER_SGNB_PS_CHANGE", pd.Series([0]))
 
-    # HÀNG 1 (5 CỘT)
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         v = s_tf.sum()
@@ -50,23 +51,23 @@ def render_kpi_overview(filtered_df):
         v = calc_weighted_avg(filtered_df, "USER_UL_AVG_THROUGHPUT")
         render_card("Integrity", "User UL Throughput", f"{v:.2f} M", ">=1.5M", f"{s_ul.min():.2f}M", f"{s_ul.max():.2f}M", "Tốc độ UL 5G", "EXCELLENT" if v >= 1.5 else "GOOD")
 
-    # HÀNG 2 (5 CỘT)
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         v = calc_weighted_avg(filtered_df, "CQI_5G")
         render_card("Radio Quality", "CQI 5G Index", f"{v:.2f}%", ">=95.0%", f"{s_cqi.min():.1f}%", f"{s_cqi.max():.1f}%", "Chất lượng RF 5G", "EXCELLENT" if v >= 95.0 else "WARNING")
     with c2:
         v = calc_weighted_avg(filtered_df, "DLINK_RES_BLK_ULT")
-        render_card("Capacity & Load", "PRB DL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_dl.min():.1f}%", f"{s_prb_dl.max():.1f}%", "Tải PRB Downlink", "EXCELLENT" if v <= 40.0 else "WARNIN[...]
+        render_card("Capacity & Load", "PRB DL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_dl.min():.1f}%", f"{s_prb_dl.max():.1f}%", "Tải PRB Downlink", "EXCELLENT" if v <= 40.0 else "WARNING")
     with c3:
         v = calc_weighted_avg(filtered_df, "ULINK_RES_BLK_ULT")
-        render_card("Capacity & Load", "PRB UL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_ul.min():.1f}%", f"{s_prb_ul.max():.1f}%", "Tải PRB Uplink", "EXCELLENT" if v <= 40.0 else "WARNING"[...]
+        render_card("Capacity & Load", "PRB UL Utilization", f"{v:.2f}%", "<=40.0%", f"{s_prb_ul.min():.1f}%", f"{s_prb_ul.max():.1f}%", "Tải PRB Uplink", "EXCELLENT" if v <= 40.0 else "WARNING")
     with c4:
         v = s_intra.mean()
         render_card("Mobility", "Intra-SgNB HO SR", f"{v:.2f}%", ">=98.0%", f"{s_intra.min():.1f}%", f"{s_intra.max():.1f}%", "Chuyển giao nội bộ", "WARNING" if v < 98.0 else "GOOD")
     with c5:
         v = s_inter.mean()
         render_card("Mobility", "Inter-SgNB HO SR", f"{v:.2f}%", ">=98.0%", f"{s_inter.min():.1f}%", f"{s_inter.max():.1f}%", "Chuyển giao liên SgNB", "WARNING" if v < 98.0 else "GOOD")
+
 
 def render_freqband_charts(filtered_df, cell_col):
     st.subheader("📊 Thống Kê Phân Bổ Cell & Traffic Theo Freqband (5G)")
@@ -84,7 +85,7 @@ def render_freqband_charts(filtered_df, cell_col):
             values="Số lượng Cell",
             title="<b>Tỷ lệ & Số lượng Cell theo Băng tần (5G)</b>",
             hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Pastel
+            color_discrete_sequence=px.colors.qualitative.Pastel,
         )
         fig_fb_cell.update_traces(textinfo="label+value+percent", textfont_size=12)
         fig_fb_cell.update_layout(template="plotly_dark", height=320, margin=dict(l=20, r=20, t=40, b=20))
@@ -103,7 +104,7 @@ def render_freqband_charts(filtered_df, cell_col):
                 text="TRAFFIC",
                 title="<b>Tổng Traffic Volume (GB) theo Băng tần (5G)</b>",
                 color="Freqband",
-                color_discrete_sequence=px.colors.qualitative.Set2
+                color_discrete_sequence=px.colors.qualitative.Set2,
             )
             fig_fb_tf.update_traces(texttemplate='%{text:,.1f} GB', textposition='outside')
             fig_fb_tf.update_layout(
@@ -112,13 +113,12 @@ def render_freqband_charts(filtered_df, cell_col):
                 showlegend=False,
                 margin=dict(l=20, r=20, t=40, b=20),
                 yaxis_title="Traffic Volume (GB)",
-                xaxis_title="Freqband"
+                xaxis_title="Freqband",
             )
 
             with fb_col2:
                 st.plotly_chart(fig_fb_tf, use_container_width=True)
 
-        # 🆕 Thống kê DL Throughput theo Băng tần
         if "USER_DL_AVG_THROUGHPUT" in filtered_df.columns:
             fb_dl_df = filtered_df.groupby("Freqband").agg({
                 "USER_DL_AVG_THROUGHPUT": "mean"
@@ -133,7 +133,7 @@ def render_freqband_charts(filtered_df, cell_col):
                 text="Avg DL Throughput (Mbps)",
                 title="<b>Trung Bình DL Throughput theo Băng tần (5G)</b>",
                 color="Freqband",
-                color_discrete_sequence=px.colors.qualitative.Light24
+                color_discrete_sequence=px.colors.qualitative.Light24,
             )
             fig_fb_dl.update_traces(texttemplate='%{text:,.1f} Mbps', textposition='outside')
             fig_fb_dl.update_layout(
@@ -142,11 +142,12 @@ def render_freqband_charts(filtered_df, cell_col):
                 showlegend=False,
                 margin=dict(l=20, r=20, t=40, b=20),
                 yaxis_title="Avg DL Throughput (Mbps)",
-                xaxis_title="Freqband"
+                xaxis_title="Freqband",
             )
 
             with fb_col3:
                 st.plotly_chart(fig_fb_dl, use_container_width=True)
+
 
 def render_trend_chart(filtered_df):
     st.subheader("📈 Biểu Đồ Tương Quan Xu Hướng KPI 5G")
@@ -169,15 +170,13 @@ def render_trend_chart(filtered_df):
     ctrl_col1, ctrl_col2 = st.columns([1, 1])
     with ctrl_col1:
         time_options = ["Chỉ theo giờ (24h Avg)", "Theo Ngày & Giờ (Timeline)"]
-        
-        # Nếu không có cột Giờ: Ép index=1 ("Theo Ngày & Giờ") và disable radio
         time_mode = st.radio(
             "⏱ Thời gian:",
             options=time_options,
             index=1 if not has_hour_info else 0,
             disabled=not has_hour_info,
             horizontal=True,
-            key="radio_time_mode"
+            key="radio_time_mode",
         )
 
     with ctrl_col2:
@@ -196,7 +195,7 @@ def render_trend_chart(filtered_df):
             "SGNB_ADD_SUCCESS_RATE": "mean",
             "INTRA_SGNB_PS_CHANGE": "mean",
             "INTER_SGNB_PS_CHANGE": "mean",
-            "DLINK_RES_BLK_ULT": "mean"
+            "DLINK_RES_BLK_ULT": "mean",
         }).reset_index()
         x_axis = c_data["Hour"].astype(int)
         x_title = "Giờ trong ngày (0h - 23h)"
@@ -210,13 +209,12 @@ def render_trend_chart(filtered_df):
             "SGNB_ADD_SUCCESS_RATE": "mean",
             "INTRA_SGNB_PS_CHANGE": "mean",
             "INTER_SGNB_PS_CHANGE": "mean",
-            "DLINK_RES_BLK_ULT": "mean"
+            "DLINK_RES_BLK_ULT": "mean",
         }).reset_index().sort_values(by="DateTime")
         c_data["TimeLabel"] = c_data["DateTime"].dt.strftime("%d/%m %H:00")
         x_axis = c_data["TimeLabel"]
         x_title = "Thời Gian (Ngày/Giờ)"
     else:
-        # Trường hợp không có dữ liệu Giờ -> Tự động gom nhóm theo Ngày
         c_data = filtered_df.groupby("Date").agg({
             "TRAFFIC": "sum",
             sel_kpi_col: agg_func,
@@ -226,7 +224,7 @@ def render_trend_chart(filtered_df):
             "SGNB_ADD_SUCCESS_RATE": "mean",
             "INTRA_SGNB_PS_CHANGE": "mean",
             "INTER_SGNB_PS_CHANGE": "mean",
-            "DLINK_RES_BLK_ULT": "mean"
+            "DLINK_RES_BLK_ULT": "mean",
         }).reset_index().sort_values(by="Date")
         c_data["TimeLabel"] = pd.to_datetime(c_data["Date"]).dt.strftime("%d/%m/%Y")
         x_axis = c_data["TimeLabel"]
@@ -242,6 +240,7 @@ def render_trend_chart(filtered_df):
     fig.update_yaxes(title_text=sel_kpi_lbl, secondary_y=True, showgrid=True, gridcolor="rgba(255,255,255,0.1)")
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 def render_top_n_section(filtered_df, site_col, cell_col):
     st.subheader("🔥 Top N GNODEB & Top N Cell 5G Có Lưu Lượng Cao Nhất")
@@ -297,6 +296,7 @@ def render_top_n_section(filtered_df, site_col, cell_col):
 
     return top_cell_df, top_site_df
 
+
 def render_worst_n_section(filtered_df, site_col, cell_col):
     st.subheader("⚠️ Danh Sách Worst N Cells Theo KPI 5G")
 
@@ -326,12 +326,18 @@ def render_worst_n_section(filtered_df, site_col, cell_col):
     target_col, sort_ascending = available_kpi_options[sel_worst_kpi_lbl]
 
     agg_dict = {
-        col: ("sum" if col == "TRAFFIC" else "mean") 
+        col: ("sum" if col == "TRAFFIC" else "mean")
         for col in [
-            "SGNB_ADD_SUCCESS_RATE", "SGNB_ABN_RELEASE_RATE",
-            "INTRA_SGNB_PS_CHANGE", "INTER_SGNB_PS_CHANGE",
-            "USER_DL_AVG_THROUGHPUT", "USER_UL_AVG_THROUGHPUT",
-            "CQI_5G", "DLINK_RES_BLK_ULT", "ULINK_RES_BLK_ULT", "TRAFFIC"
+            "SGNB_ADD_SUCCESS_RATE",
+            "SGNB_ABN_RELEASE_RATE",
+            "INTRA_SGNB_PS_CHANGE",
+            "INTER_SGNB_PS_CHANGE",
+            "USER_DL_AVG_THROUGHPUT",
+            "USER_UL_AVG_THROUGHPUT",
+            "CQI_5G",
+            "DLINK_RES_BLK_ULT",
+            "ULINK_RES_BLK_ULT",
+            "TRAFFIC",
         ] if col in filtered_df.columns
     }
     cell_agg = filtered_df.groupby([site_col, cell_col]).agg(agg_dict).reset_index()
@@ -348,10 +354,10 @@ def render_worst_n_section(filtered_df, site_col, cell_col):
 
     return worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho
 
+
 def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_cell_df, worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho, has_hour_info):
     st.subheader("📄 PDF Report Export")
 
-    # Nút Tạo Báo Cáo PDF
     generate_btn = st.button("📄 Tạo Báo Cáo PDF", key="btn_gen_pdf")
 
     if generate_btn:
@@ -397,7 +403,7 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
                         "SGNB_ADD_SUCCESS_RATE": calc_weighted_avg(g, "SGNB_ADD_SUCCESS_RATE"),
                         "INTRA_SGNB_PS_CHANGE": g["INTRA_SGNB_PS_CHANGE"].mean() if "INTRA_SGNB_PS_CHANGE" in g else 0,
                         "INTER_SGNB_PS_CHANGE": g["INTER_SGNB_PS_CHANGE"].mean() if "INTER_SGNB_PS_CHANGE" in g else 0,
-                        "DLINK_RES_BLK_ULT": calc_weighted_avg(g, "DLINK_RES_BLK_ULT")
+                        "DLINK_RES_BLK_ULT": calc_weighted_avg(g, "DLINK_RES_BLK_ULT"),
                     })
                 ).reset_index().sort_values(by="DateTime")
                 c_data_timeline["TimeLabel"] = c_data_timeline["DateTime"].dt.strftime("%d/%m %H:00")
@@ -411,7 +417,7 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
                         "SGNB_ADD_SUCCESS_RATE": calc_weighted_avg(g, "SGNB_ADD_SUCCESS_RATE"),
                         "INTRA_SGNB_PS_CHANGE": g["INTRA_SGNB_PS_CHANGE"].mean() if "INTRA_SGNB_PS_CHANGE" in g else 0,
                         "INTER_SGNB_PS_CHANGE": g["INTER_SGNB_PS_CHANGE"].mean() if "INTER_SGNB_PS_CHANGE" in g else 0,
-                        "DLINK_RES_BLK_ULT": calc_weighted_avg(g, "DLINK_RES_BLK_ULT")
+                        "DLINK_RES_BLK_ULT": calc_weighted_avg(g, "DLINK_RES_BLK_ULT"),
                     })
                 ).reset_index().sort_values(by="Date")
                 c_data_timeline["TimeLabel"] = pd.to_datetime(c_data_timeline["Date"]).dt.strftime("%d/%m/%Y")
@@ -426,18 +432,17 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
                 worst10_intra_ho,
                 worst10_inter_ho,
                 fb_cell_counts,
-                fb_tf_df
+                fb_tf_df,
             )
             st.session_state["pdf_bytes"] = pdf_buf.getvalue()
 
-    # Nút Tải Báo Cáo PDF hiển thị phía dưới nút Tạo
     if "pdf_bytes" in st.session_state:
         st.download_button(
             label="⬇️ Tải Báo Cáo PDF",
             data=st.session_state["pdf_bytes"],
             file_name="5G_Network_Health.pdf",
             mime="application/pdf",
-            key="btn_dl_pdf"
+            key="btn_dl_pdf",
         )
 
     st.caption("🚀 5G RAN Quality Report")
