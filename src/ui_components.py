@@ -365,7 +365,7 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
             top10_sites_pdf = top_site_df.head(10) if not top_site_df.empty else pd.DataFrame()
             top10_cells_pdf = top_cell_df.head(10) if not top_cell_df.empty else pd.DataFrame()
 
-            fb_cell_counts, fb_tf_df = pd.DataFrame(), pd.DataFrame()
+            fb_cell_counts, fb_tf_df, fb_dl_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
             if cell_col and "Freqband" in filtered_df.columns:
                 cell_fb_df = filtered_df[[cell_col, "Freqband"]].drop_duplicates()
                 fb_cell_counts = cell_fb_df["Freqband"].value_counts().reset_index()
@@ -375,6 +375,11 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
                 if "TRAFFIC" in filtered_df.columns:
                     fb_tf_df = filtered_df.groupby("Freqband")["TRAFFIC"].sum().reset_index()
                     fb_tf_df = fb_tf_df.sort_values(by="Freqband")
+
+                if "USER_DL_AVG_THROUGHPUT" in filtered_df.columns:
+                    fb_dl_df = filtered_df.groupby("Freqband")["USER_DL_AVG_THROUGHPUT"].mean().reset_index()
+                    fb_dl_df.columns = ["Freqband", "Avg DL Throughput (Mbps)"]
+                    fb_dl_df = fb_dl_df.sort_values(by="Freqband")
 
             s_tf = filtered_df.get("TRAFFIC", pd.Series([0]))
             s_intra = filtered_df.get("INTRA_SGNB_PS_CHANGE", pd.Series([0]))
@@ -433,6 +438,7 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
                 worst10_inter_ho,
                 fb_cell_counts,
                 fb_tf_df,
+                fb_dl_df,
             )
             st.session_state["pdf_bytes"] = pdf_buf.getvalue()
 
