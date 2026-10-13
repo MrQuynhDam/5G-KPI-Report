@@ -167,7 +167,7 @@ def render_trend_chart(filtered_df):
     avail_kpis = {k: v for k, v in kpi_dict.items() if v in filtered_df.columns}
     has_hour_info = ("Hour" in filtered_df.columns and filtered_df["Hour"].notna().any())
 
-    ctrl_col1, ctrl_col2 = st.columns([1, 1])
+    ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([1, 1, 1])
     with ctrl_col1:
         time_options = ["Chỉ theo giờ (24h Avg)", "Theo Ngày & Giờ (Timeline)"]
         time_mode = st.radio(
@@ -182,11 +182,28 @@ def render_trend_chart(filtered_df):
     with ctrl_col2:
         sel_kpi_lbl = st.selectbox("🎯 Chọn KPI kết hợp Traffic 5G:", options=list(avail_kpis.keys()))
 
+    with ctrl_col3:
+        if "Freqband" in filtered_df.columns:
+            all_fb = sorted(filtered_df["Freqband"].dropna().unique().tolist())
+            fb_options = ["Tất cả Freqband"] + all_fb
+            sel_fb = st.selectbox("📡 Chọn Freqband:", options=fb_options)
+        else:
+            sel_fb = "Tất cả Freqband"
+
+    # Lọc dữ liệu theo Freqband đã chọn
+    trend_df = filtered_df.copy()
+    if sel_fb != "Tất cả Freqband" and "Freqband" in trend_df.columns:
+        trend_df = trend_df[trend_df["Freqband"] == sel_fb]
+
+    if trend_df.empty:
+        st.warning("⚠️ Không có dữ liệu cho Freqband đã chọn!")
+        return
+
     sel_kpi_col = avail_kpis[sel_kpi_lbl]
     agg_func = "mean"
 
     if time_mode == "Chỉ theo giờ (24h Avg)" and has_hour_info:
-        c_data = filtered_df.groupby("Hour").agg({
+        c_data = trend_df.groupby("Hour").agg({
             "TRAFFIC": "sum",
             sel_kpi_col: agg_func,
             "USER_DL_AVG_THROUGHPUT": "mean",
@@ -199,8 +216,8 @@ def render_trend_chart(filtered_df):
         }).reset_index()
         x_axis = c_data["Hour"].astype(int)
         x_title = "Giờ trong ngày (0h - 23h)"
-    elif time_mode == "Theo Ngày & Giờ (Timeline)" and has_hour_info and "DateTime" in filtered_df.columns:
-        c_data = filtered_df.groupby(["Date", "Hour", "DateTime"]).agg({
+    elif time_mode == "Theo Ngày & Giờ (Timeline)" and has_hour_info and "DateTime" in trend_df.columns:
+        c_data = trend_df.groupby(["Date", "Hour", "DateTime"]).agg({
             "TRAFFIC": "sum",
             sel_kpi_col: agg_func,
             "USER_DL_AVG_THROUGHPUT": "mean",
@@ -215,7 +232,7 @@ def render_trend_chart(filtered_df):
         x_axis = c_data["TimeLabel"]
         x_title = "Thời Gian (Ngày/Giờ)"
     else:
-        c_data = filtered_df.groupby("Date").agg({
+        c_data = trend_df.groupby("Date").agg({
             "TRAFFIC": "sum",
             sel_kpi_col: agg_func,
             "USER_DL_AVG_THROUGHPUT": "mean",
@@ -231,13 +248,18 @@ def render_trend_chart(filtered_df):
         x_title = "Thời Gian (Ngày)"
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Bar(x=x_axis, y=c_data["TRAFFIC"], name="Traffic 5G (GB)", marker_color="rgba(2, 132, 199, 0.5)"), secondary_y=False)
-    fig.add_trace(go.Scatter(x=x_axis, y=c_data[sel_kpi_col], name=sel_kpi_lbl, mode="lines+markers", line=dict(color="#10b981", width=2.5)), secondary_y=True)
+    fig.add_trace(go.Bar(x=x_axis, y=c_data["TRAFFIC"].round(2), name="Traffic 5G (GB)", marker_color="rgba(2, 132, 199, 0.5)"), secondary_y=False)
+    fig.add_trace(go.Scatter(x=x_axis, y=c_data[sel_kpi_col].round(2), name=sel_kpi_lbl, mode="lines+markers", line=dict(color="#10b981", width=2.5)), secondary_y=True)
 
-    fig.update_layout(title_text=f"📊 Biểu đồ Traffic và {sel_kpi_lbl}", template="plotly_dark", hovermode="x unified", height=420, margin=dict(l=10, r=10, t=40, b=10))
+    fb_suffix = f" (Freqband: {sel_fb})" if sel_fb != "Tất cả Freqband" else ""
+    fig.update_layout(title_text=f"📊 Biểu đồ Traffic và {sel_kpi_lbl}{fb_suffix}", template="plotly_dark", hovermode="x unified", height=420, margin=dict(l=10, r=10, t=40, b=10))
     fig.update_xaxes(title_text=x_title, type="category" if time_mode != "Chỉ theo giờ (24h Avg)" else None)
-    fig.update_yaxes(title_text="Traffic (GB)", secondary_y=False, showgrid=False)
-    fig.update_yaxes(title_text=sel_kpi_lbl, secondary_y=True, showgrid=True, gridcolor="rgba(255,255,255,0.1)")
+
+    # Định dạng đơn vị trục Y bên trái (Traffic 5G GB) làm tròn 2 số thập phân
+    fig.update_yaxes(title_text="Traffic (GB)", secondary_y=False, showgrid=False, tickformat=".2f")
+
+    # Định dạng đơn vị trục Y bên phải (KPI 5G) làm tròn 2 số thập phân
+    fig.update_yaxes(title_text=sel_kpi_lbl, secondary_y=True, showgrid=True, gridcolor="rgba(255,255,255,0.1)", tickformat=".2f")
 
     st.plotly_chart(fig, use_container_width=True)
 
