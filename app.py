@@ -53,20 +53,12 @@ else:
     st.info("👋 Vui lòng tải file CSV KPI 5G ở thanh công cụ bên trái.")
     st.stop()
 
-# ---------------------------------------------------------
-# 🚨 CHÈN VÀO ĐÂY: Dừng app an toàn nếu file nạp vào bị lỗi / sai định dạng
-# ---------------------------------------------------------
 if df is None:
     st.stop()
 
 # =========================================================
-# 3. Sidebar Filters (Các đoạn code phía dưới giữ nguyên)
-# =========================================================
-st.sidebar.subheader("📅 Chọn Ngày")
-if "Date" in df.columns and df["Date"].notnull().any():
-    ...
-
 # 3. Sidebar Filters
+# =========================================================
 st.sidebar.subheader("📅 Chọn Ngày")
 if "Date" in df.columns and df["Date"].notnull().any():
     all_dates = sorted(df["Date"].dropna().unique().tolist())
@@ -129,7 +121,7 @@ top_cell_df, top_site_df = render_top_n_section(filtered_df, site_col, cell_col)
 st.markdown("---")
 
 # 8. Worst N Cells
-worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho = render_worst_n_section(filtered_df, site_col, cell_col)
+worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho, worst10_cqi, worst10_dl_thrp, worst10_prb = render_worst_n_section(filtered_df, site_col, cell_col)
 st.markdown("---")
 
 # 9. Xuất Báo Cáo PDF
@@ -144,5 +136,8 @@ render_pdf_export_section(
     worst10_drop,
     worst10_intra_ho,
     worst10_inter_ho,
-    has_hour_info
+    has_hour_info,
+    worst10_cqi=worst10_cqi,
+    worst10_dl_thrp=worst10_dl_thrp,
+    worst10_prb=worst10_prb
 )
