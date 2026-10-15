@@ -21,7 +21,10 @@ def generate_pdf_report(
     worst10_inter_ho,
     fb_cell_counts=None,
     fb_tf_df=None,
-    fb_dl_df=None  # <-- Thêm tham số nhận dữ liệu Throughput
+    fb_dl_df=None,
+    worst10_cqi=None,
+    worst10_dl_thrp=None,
+    worst10_prb=None
 ):
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
@@ -384,115 +387,44 @@ def generate_pdf_report(
     story.append(PageBreak())
 
     # MỤC V. WORST 10 CELLS
-    story.append(Paragraph("V. DANH SÁCH WORST 10 CELLS CHO CÁC KPI CHÍNH 5G", h2_style))
+    story.append(Paragraph("V. DANH SÁCH WORST 10 CELLS CÁC KPI CHÍNH (5G)", h2_style))
     story.append(Spacer(1, 4))
 
-    if not worst10_add_sr.empty:
-        story.append(Paragraph("<b>1. Worst 10 Cells theo Tỷ lệ SgNB Addition SR Thấp:</b>", norm_style))
+    def render_worst_pdf_table(title, df_data, val_col, fmt, bg_color):
+        if df_data is None or df_data.empty: return
+        story.append(Paragraph(f"<b>{title}</b>", norm_style))
         story.append(Spacer(1, 2))
         w_data = [[
             p_cell("Tên GNODEB", True, color_hex='#ffffff'),
             p_cell("Tên CELL", True, color_hex='#ffffff'),
-            p_cell("SgNB Add SR (%)", True, color_hex='#ffffff'),
+            p_cell("Giá trị KPI", True, color_hex='#ffffff'),
             p_cell("Total Traffic (GB)", True, color_hex='#ffffff')
         ]]
-        for _, row in worst10_add_sr.head(10).iterrows():
+        for _, r in df_data.head(10).iterrows():
             w_data.append([
-                p_cell(row.get("Tên GNODEB", "")),
-                p_cell(row.get("Tên CELL", "")),
-                p_cell(f"{row.get('SGNB_ADD_SUCCESS_RATE', 0):.2f}%"),
-                p_cell(f"{row.get('TRAFFIC', 0):,.2f}")
+                p_cell(r.get("Tên GNODEB", "")),
+                p_cell(r.get("Tên CELL", "")),
+                p_cell(fmt.format(r.get(val_col, 0))),
+                p_cell(f"{r.get('TRAFFIC', 0):,.2f}")
             ])
-        t_cssr = Table(w_data, colWidths=[180, 220, 170, 170])
-        t_cssr.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#991b1b")),
+        t_out = Table(w_data, colWidths=[180, 220, 170, 170])
+        t_out.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor(bg_color)),
             ("BOTTOMPADDING", (0,0), (-1,-1), 3),
             ("TOPPADDING", (0,0), (-1,-1), 3),
             ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
             ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f8fafc")]),
         ]))
-        story.append(t_cssr)
+        story.append(t_out)
         story.append(Spacer(1, 8))
 
-    if not worst10_drop.empty:
-        story.append(Paragraph("<b>2. Worst 10 Cells theo Tỷ lệ SgNB Abnormal Release Rate Cao:</b>", norm_style))
-        story.append(Spacer(1, 2))
-        w_data = [[
-            p_cell("Tên GNODEB", True, color_hex='#ffffff'),
-            p_cell("Tên CELL", True, color_hex='#ffffff'),
-            p_cell("SgNB Abn Release (%)", True, color_hex='#ffffff'),
-            p_cell("Total Traffic (GB)", True, color_hex='#ffffff')
-        ]]
-        for _, row in worst10_drop.head(10).iterrows():
-            w_data.append([
-                p_cell(row.get("Tên GNODEB", "")),
-                p_cell(row.get("Tên CELL", "")),
-                p_cell(f"{row.get('SGNB_ABN_RELEASE_RATE', 0):.3f}%"),
-                p_cell(f"{row.get('TRAFFIC', 0):,.2f}")
-            ])
-        t_dcr = Table(w_data, colWidths=[180, 220, 170, 170])
-        t_dcr.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#b91c1c")),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-            ("TOPPADDING", (0,0), (-1,-1), 3),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
-            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f8fafc")]),
-        ]))
-        story.append(t_dcr)
-        story.append(Spacer(1, 8))
-
-    if not worst10_intra_ho.empty:
-        story.append(Paragraph("<b>3. Worst 10 Cells theo Intra-SgNB HO SR Thấp:</b>", norm_style))
-        story.append(Spacer(1, 2))
-        w_data = [[
-            p_cell("Tên GNODEB", True, color_hex='#ffffff'),
-            p_cell("Tên CELL", True, color_hex='#ffffff'),
-            p_cell("Intra-SgNB HO (%)", True, color_hex='#ffffff'),
-            p_cell("Total Traffic (GB)", True, color_hex='#ffffff')
-        ]]
-        for _, row in worst10_intra_ho.head(10).iterrows():
-            w_data.append([
-                p_cell(row.get("Tên GNODEB", "")),
-                p_cell(row.get("Tên CELL", "")),
-                p_cell(f"{row.get('INTRA_SGNB_PS_CHANGE', 0):.2f}%"),
-                p_cell(f"{row.get('TRAFFIC', 0):,.2f}")
-            ])
-        t_ho = Table(w_data, colWidths=[180, 220, 170, 170])
-        t_ho.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#c2410c")),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-            ("TOPPADDING", (0,0), (-1,-1), 3),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
-            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f8fafc")]),
-        ]))
-        story.append(t_ho)
-        story.append(Spacer(1, 8))
-
-    if not worst10_inter_ho.empty:
-        story.append(Paragraph("<b>4. Worst 10 Cells theo Inter-SgNB HO SR Thấp:</b>", norm_style))
-        story.append(Spacer(1, 2))
-        w_data = [[
-            p_cell("Tên GNODEB", True, color_hex='#ffffff'),
-            p_cell("Tên CELL", True, color_hex='#ffffff'),
-            p_cell("Inter-SgNB HO (%)", True, color_hex='#ffffff'),
-            p_cell("Total Traffic (GB)", True, color_hex='#ffffff')
-        ]]
-        for _, row in worst10_inter_ho.head(10).iterrows():
-            w_data.append([
-                p_cell(row.get("Tên GNODEB", "")),
-                p_cell(row.get("Tên CELL", "")),
-                p_cell(f"{row.get('INTER_SGNB_PS_CHANGE', 0):.2f}%"),
-                p_cell(f"{row.get('TRAFFIC', 0):,.2f}")
-            ])
-        t_inter_ho = Table(w_data, colWidths=[180, 220, 170, 170])
-        t_inter_ho.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#ea580c")),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 3),
-            ("TOPPADDING", (0,0), (-1,-1), 3),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
-            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f8fafc")]),
-        ]))
-        story.append(t_inter_ho)
+    render_worst_pdf_table("1. Worst 10 Cells theo Tỷ lệ SgNB Addition SR Thấp:", worst10_add_sr, "SGNB_ADD_SUCCESS_RATE", "{:.2f}%", "#991b1b")
+    render_worst_pdf_table("2. Worst 10 Cells theo Tỷ lệ SgNB Abnormal Release Rate Cao:", worst10_drop, "SGNB_ABN_RELEASE_RATE", "{:.3f}%", "#b91c1c")
+    render_worst_pdf_table("3. Worst 10 Cells theo Intra-SgNB HO SR Thấp:", worst10_intra_ho, "INTRA_SGNB_PS_CHANGE", "{:.2f}%", "#c2410c")
+    render_worst_pdf_table("4. Worst 10 Cells theo Inter-SgNB HO SR Thấp:", worst10_inter_ho, "INTER_SGNB_PS_CHANGE", "{:.2f}%", "#ea580c")
+    render_worst_pdf_table("5. Worst 10 Cells theo Chỉ số Chất lượng Vùng phủ (CQI 5G Index):", worst10_cqi, "CQI_5G", "{:.2f}%", "#d97706")
+    render_worst_pdf_table("6. Worst 10 Cells theo Tốc độ Tải xuống 5G (User DL Throughput):", worst10_dl_thrp, "USER_DL_AVG_THROUGHPUT", "{:.2f} Mbps", "#7c3aed")
+    render_worst_pdf_table("7. Worst 10 Cells theo Tỷ lệ Sử dụng PRB DL (PRB DL Utilization):", worst10_prb, "DLINK_RES_BLK_ULT", "{:.2f}%", "#4c1d95")
 
     doc.build(story)
     buf.seek(0)
