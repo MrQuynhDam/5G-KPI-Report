@@ -323,7 +323,7 @@ def render_worst_n_section(filtered_df, site_col, cell_col):
     st.subheader("⚠️ Danh Sách Worst N Cells Theo KPI 5G")
 
     if not cell_col:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
     kpi_options_dict = {
         "SgNB Add Success Rate Thấp": ("SGNB_ADD_SUCCESS_RATE", True),
@@ -373,11 +373,19 @@ def render_worst_n_section(filtered_df, site_col, cell_col):
     worst10_drop = cell_agg.sort_values(by="SGNB_ABN_RELEASE_RATE", ascending=False).head(10) if "SGNB_ABN_RELEASE_RATE" in cell_agg.columns else pd.DataFrame()
     worst10_intra_ho = cell_agg.sort_values(by="INTRA_SGNB_PS_CHANGE", ascending=True).head(10) if "INTRA_SGNB_PS_CHANGE" in cell_agg.columns else pd.DataFrame()
     worst10_inter_ho = cell_agg.sort_values(by="INTER_SGNB_PS_CHANGE", ascending=True).head(10) if "INTER_SGNB_PS_CHANGE" in cell_agg.columns else pd.DataFrame()
+    worst10_cqi = cell_agg.sort_values(by="CQI_5G", ascending=True).head(10) if "CQI_5G" in cell_agg.columns else pd.DataFrame()
+    worst10_dl_thrp = cell_agg.sort_values(by="USER_DL_AVG_THROUGHPUT", ascending=True).head(10) if "USER_DL_AVG_THROUGHPUT" in cell_agg.columns else pd.DataFrame()
+    worst10_prb = cell_agg.sort_values(by="DLINK_RES_BLK_ULT", ascending=False).head(10) if "DLINK_RES_BLK_ULT" in cell_agg.columns else pd.DataFrame()
 
-    return worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho
+    return worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho, worst10_cqi, worst10_dl_thrp, worst10_prb
 
 
-def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_cell_df, worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho, has_hour_info):
+def render_pdf_export_section(
+    filtered_df, site_col, cell_col, top_site_df, top_cell_df,
+    worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho,
+    has_hour_info,
+    worst10_cqi=None, worst10_dl_thrp=None, worst10_prb=None
+):
     st.subheader("📄 PDF Report Export")
 
     generate_btn = st.button("📄 Tạo Báo Cáo PDF", key="btn_gen_pdf")
@@ -461,6 +469,9 @@ def render_pdf_export_section(filtered_df, site_col, cell_col, top_site_df, top_
                 fb_cell_counts,
                 fb_tf_df,
                 fb_dl_df,
+                worst10_cqi=worst10_cqi,
+                worst10_dl_thrp=worst10_dl_thrp,
+                worst10_prb=worst10_prb,
             )
             st.session_state["pdf_bytes"] = pdf_buf.getvalue()
 
