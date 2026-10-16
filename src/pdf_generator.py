@@ -386,13 +386,13 @@ def generate_pdf_report(
 
     # MỤC V. WORST 10 CELLS
     worst_dfs = [
-        ("1. Worst 10 Cells theo Tỷ lệ SgNB Addition SR Thấp:", worst10_add_sr, "SGNB_ADD_SUCCESS_RATE", "{:.2f}%", "#991b1b"),
-        ("2. Worst 10 Cells theo Tỷ lệ SgNB Abnormal Release Rate Cao:", worst10_drop, "SGNB_ABN_RELEASE_RATE", "{:.3f}%", "#b91c1c"),
-        ("3. Worst 10 Cells theo Intra-SgNB HO SR Thấp:", worst10_intra_ho, "INTRA_SGNB_PS_CHANGE", "{:.2f}%", "#c2410c"),
-        ("4. Worst 10 Cells theo Inter-SgNB HO SR Thấp:", worst10_inter_ho, "INTER_SGNB_PS_CHANGE", "{:.2f}%", "#ea580c"),
-        ("5. Worst 10 Cells theo Chỉ số Chất lượng Vùng phủ (CQI 5G Index):", worst10_cqi, "CQI_5G", "{:.2f}%", "#d97706"),
-        ("6. Worst 10 Cells theo Tốc độ Tải xuống 5G (User DL Throughput):", worst10_dl_thrp, "USER_DL_AVG_THROUGHPUT", "{:.2f} Mbps", "#7c3aed"),
-        ("7. Worst 10 Cells theo Tỷ lệ Sử dụng PRB DL (PRB DL Utilization):", worst10_prb, "DLINK_RES_BLK_ULT", "{:.2f}%", "#4c1d95"),
+        ("Worst 10 Cells theo Tỷ lệ SgNB Addition SR Thấp:", worst10_add_sr, "SGNB_ADD_SUCCESS_RATE", "{:.2f}%", "#991b1b"),
+        ("Worst 10 Cells theo Tỷ lệ SgNB Abnormal Release Rate Cao:", worst10_drop, "SGNB_ABN_RELEASE_RATE", "{:.3f}%", "#b91c1c"),
+        ("Worst 10 Cells theo Intra-SgNB HO SR Thấp:", worst10_intra_ho, "INTRA_SGNB_PS_CHANGE", "{:.2f}%", "#c2410c"),
+        ("Worst 10 Cells theo Inter-SgNB HO SR Thấp:", worst10_inter_ho, "INTER_SGNB_PS_CHANGE", "{:.2f}%", "#ea580c"),
+        ("Worst 10 Cells theo Chỉ số Chất lượng Vùng phủ (CQI 5G Index):", worst10_cqi, "CQI_5G", "{:.2f}%", "#d97706"),
+        ("Worst 10 Cells theo Tốc độ Tải xuống 5G (User DL Throughput):", worst10_dl_thrp, "USER_DL_AVG_THROUGHPUT", "{:.2f} Mbps", "#7c3aed"),
+        ("Worst 10 Cells theo Tỷ lệ Sử dụng PRB DL (PRB DL Utilization):", worst10_prb, "DLINK_RES_BLK_ULT", "{:.2f}%", "#4c1d95"),
     ]
 
     has_any_worst = any(df is not None and not df.empty for _, df, _, _, _ in worst_dfs)
