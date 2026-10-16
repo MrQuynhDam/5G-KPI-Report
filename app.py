@@ -137,6 +137,8 @@ render_pdf_export_section(
     worst10_intra_ho,
     worst10_inter_ho,
     has_hour_info,
+    sel_dates=sel_dates,
+    sel_sites=sel_sites if site_col else [],
     worst10_cqi=worst10_cqi,
     worst10_dl_thrp=worst10_dl_thrp,
     worst10_prb=worst10_prb
