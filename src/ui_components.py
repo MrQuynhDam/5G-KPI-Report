@@ -384,14 +384,85 @@ def render_pdf_export_section(
     filtered_df, site_col, cell_col, top_site_df, top_cell_df,
     worst10_add_sr, worst10_drop, worst10_intra_ho, worst10_inter_ho,
     has_hour_info,
+    sel_dates=None, sel_sites=None,
     worst10_cqi=None, worst10_dl_thrp=None, worst10_prb=None
 ):
-    st.subheader("📄 PDF Report Export")
+    """Xuất báo cáo PDF 5G với Checkbox riêng từng mục và nút Select All."""
+    st.markdown("---")
+    st.markdown("### 📄 PDF Report Export")
 
-    generate_btn = st.button("📄 Tạo Báo Cáo PDF", key="btn_gen_pdf")
+    st.markdown("##### ⚙️ Lựa chọn danh sách Worst N Cells cần đưa vào PDF (5G):")
 
-    if generate_btn:
-        with st.spinner("⏳ Đang tính toán và khởi tạo Báo cáo PDF 5G..."):
+    # Khai báo các key checkbox con cho 5G
+    child_checkbox_keys = [
+        "chk_pdf_5g_add_sr",
+        "chk_pdf_5g_intra",
+        "chk_pdf_5g_cqi",
+        "chk_pdf_5g_prb",
+        "chk_pdf_5g_drop",
+        "chk_pdf_5g_inter",
+        "chk_pdf_5g_dl",
+    ]
+
+    # Hàm callback toggle chọn/bỏ chọn tất cả
+    def toggle_select_all_5g():
+        new_state = st.session_state.get("chk_pdf_5g_select_all", True)
+        for key in child_checkbox_keys:
+            st.session_state[key] = new_state
+
+    # Checkbox Select All ở vị trí đầu tiên
+    st.checkbox(
+        "☑️ **Select All** (Chọn / Bỏ chọn tất cả danh mục)",
+        value=True,
+        key="chk_pdf_5g_select_all",
+        on_change=toggle_select_all_5g
+    )
+
+    st.markdown("")  # Khoảng cách nhỏ
+
+    # Dàn các checkbox con thành 2 cột
+    cb_col1, cb_col2 = st.columns(2)
+    selected_codes = []
+
+    # Khởi tạo giá trị ban đầu trong session_state nếu chưa có
+    for k in child_checkbox_keys:
+        if k not in st.session_state:
+            st.session_state[k] = True
+
+    with cb_col1:
+        if st.checkbox("Worst 10 SgNB Addition SR (Tỷ lệ thiết lập 5G)", key="chk_pdf_5g_add_sr"):
+            selected_codes.append("add_sr")
+        if st.checkbox("Worst 10 Intra-SgNB HO SR (Chuyển giao nội bộ)", key="chk_pdf_5g_intra"):
+            selected_codes.append("intra_ho")
+        if st.checkbox("Worst 10 CQI 5G Index (Chất lượng vùng phủ RF 5G)", key="chk_pdf_5g_cqi"):
+            selected_codes.append("cqi")
+        if st.checkbox("Worst 10 PRB DL Utilization (Tải PRB Downlink 5G)", key="chk_pdf_5g_prb"):
+            selected_codes.append("prb")
+
+    with cb_col2:
+        if st.checkbox("Worst 10 SgNB Drop Rate (Tỷ lệ rớt 5G)", key="chk_pdf_5g_drop"):
+            selected_codes.append("drop")
+        if st.checkbox("Worst 10 Inter-SgNB HO SR (Chuyển giao liên SgNB)", key="chk_pdf_5g_inter"):
+            selected_codes.append("inter_ho")
+        if st.checkbox("Worst 10 User DL Throughput (Tốc độ tải xuống 5G)", key="chk_pdf_5g_dl"):
+            selected_codes.append("dl_thrp")
+
+    st.markdown("") # Khoảng nghỉ
+
+    s_tf = filtered_df.get("TRAFFIC", pd.Series([0]))
+    sel_dates_str = tuple(map(str, sel_dates)) if sel_dates else ()
+    sel_sites_cnt = len(sel_sites) if sel_sites else 0
+
+    _pdf_sig_5g = (
+        len(filtered_df),
+        round(float(s_tf.sum()), 3),
+        sel_dates_str,
+        sel_sites_cnt,
+        tuple(sorted(selected_codes))
+    )
+
+    if st.button("📑 Tạo Báo Cáo PDF", key="btn_gen_pdf_5g"):
+        with st.spinner("⏳ Đang khởi tạo báo cáo PDF 5G..."):
             top10_sites_pdf = top_site_df.head(10) if not top_site_df.empty else pd.DataFrame()
             top10_cells_pdf = top_cell_df.head(10) if not top_cell_df.empty else pd.DataFrame()
 
@@ -411,7 +482,6 @@ def render_pdf_export_section(
                     fb_dl_df.columns = ["Freqband", "Avg DL Throughput (Mbps)"]
                     fb_dl_df = fb_dl_df.sort_values(by="Freqband")
 
-            s_tf = filtered_df.get("TRAFFIC", pd.Series([0]))
             s_intra = filtered_df.get("INTRA_SGNB_PS_CHANGE", pd.Series([0]))
             s_inter = filtered_df.get("INTER_SGNB_PS_CHANGE", pd.Series([0]))
 
@@ -462,26 +532,30 @@ def render_pdf_export_section(
                 c_data_timeline,
                 top10_sites_pdf,
                 top10_cells_pdf,
-                worst10_add_sr,
-                worst10_drop,
-                worst10_intra_ho,
-                worst10_inter_ho,
-                fb_cell_counts,
-                fb_tf_df,
-                fb_dl_df,
-                worst10_cqi=worst10_cqi,
-                worst10_dl_thrp=worst10_dl_thrp,
-                worst10_prb=worst10_prb,
+                worst10_add_sr=worst10_add_sr if "add_sr" in selected_codes else None,
+                worst10_drop=worst10_drop if "drop" in selected_codes else None,
+                worst10_intra_ho=worst10_intra_ho if "intra_ho" in selected_codes else None,
+                worst10_inter_ho=worst10_inter_ho if "inter_ho" in selected_codes else None,
+                fb_cell_counts=fb_cell_counts,
+                fb_tf_df=fb_tf_df,
+                fb_dl_df=fb_dl_df,
+                worst10_cqi=worst10_cqi if "cqi" in selected_codes else None,
+                worst10_dl_thrp=worst10_dl_thrp if "dl_thrp" in selected_codes else None,
+                worst10_prb=worst10_prb if "prb" in selected_codes else None,
             )
-            st.session_state["pdf_bytes"] = pdf_buf.getvalue()
+            st.session_state["pdf_bytes_5g"] = pdf_buf.getvalue()
+            st.session_state["pdf_sig_5g"] = _pdf_sig_5g
 
-    if "pdf_bytes" in st.session_state:
-        st.download_button(
-            label="⬇️ Tải Báo Cáo PDF",
-            data=st.session_state["pdf_bytes"],
-            file_name="5G_Network_Health.pdf",
-            mime="application/pdf",
-            key="btn_dl_pdf",
-        )
+    if st.session_state.get("pdf_bytes_5g") is not None:
+        if st.session_state.get("pdf_sig_5g") == _pdf_sig_5g:
+            st.download_button(
+                label="⬇️ Tải Báo Cáo PDF",
+                data=st.session_state["pdf_bytes_5g"],
+                file_name="5G_Network_Health.pdf",
+                mime="application/pdf",
+                key="btn_dl_pdf_5g",
+            )
+        else:
+            st.info("💡 Lựa chọn danh mục xuất PDF đã thay đổi — bấm 'Tạo Báo Cáo PDF' để cập nhật lại.")
 
     st.caption("🚀 5G RAN Quality Report")
